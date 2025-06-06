@@ -2,63 +2,91 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>لوحة الإدارة</title>
+  <title>لوحة التحكم</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-    h1, h2 { color: #333; }
-    form input, form textarea {
-      width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;
-    }
-    button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .product { background: #fff; padding: 10px; margin: 10px 0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+    body { font-family: sans-serif; padding: 2rem; background: #fff; direction: rtl; }
+    h1 { color: #4caf50; text-align: center; }
+    form { display: flex; flex-direction: column; gap: 0.5rem; max-width: 500px; margin: auto; }
+    input, textarea, button { padding: 0.7rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #4caf50; color: white; border: none; cursor: pointer; }
+    table { width: 100%; margin-top: 2rem; border-collapse: collapse; }
+    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
+    img { width: 60px; }
   </style>
 </head>
 <body>
-  <h1>إضافة منتج</h1>
-  <form id="product-form">
-    <input name="name" placeholder="اسم المنتج" required>
-    <input name="image" placeholder="رابط الصورة" required>
-    <input name="price" placeholder="السعر" required>
+  <h1>لوحة التحكم</h1>
+
+  <form id="productForm">
+    <input type="hidden" name="id" />
+    <input name="name" placeholder="اسم المنتج" required />
     <textarea name="description" placeholder="الوصف" required></textarea>
-    <button type="submit">حفظ</button>
+    <input name="price" placeholder="السعر" required />
+    <input name="image" placeholder="رابط الصورة" required />
+    <button type="submit">حفظ المنتج</button>
   </form>
 
-  <h2>المنتجات الحالية</h2>
-  <div id="product-list">
-    {% for product in products %}
-      <div class="product">
-        <div>
-          {{ product.name }} - {{ product.price }}$
-        </div>
-        <div>
-          <button onclick="deleteProduct('{{ product._id }}')">🗑️</button>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
+  <table id="productsTable">
+    <thead>
+      <tr><th>صورة</th><th>الاسم</th><th>الوصف</th><th>السعر</th><th>العمليات</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    const form = document.getElementById('product-form');
-    form.onsubmit = async function(e) {
-      e.preventDefault();
-      const data = {
-        name: form.name.value,
-        image: form.image.value,
-        price: form.price.value,
-        description: form.description.value
-      };
-      await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+    const form = document.getElementById('productForm');
+    const tbody = document.querySelector('#productsTable tbody');
+
+    function loadProducts() {
+      fetch('/api/products').then(res => res.json()).then(data => {
+        tbody.innerHTML = '';
+        data.forEach(p => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><img src="${p.image}" /></td>
+            <td>${p.name}</td>
+            <td>${p.description}</td>
+            <td>${p.price}</td>
+            <td>
+              <button onclick='edit(${JSON.stringify(p)})'>✏️</button>
+              <button onclick='deleteProduct("${p._id}")'>🗑️</button>
+            </td>`;
+          tbody.appendChild(row);
+        });
       });
-      location.reload();
     }
 
-    async function deleteProduct(id) {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      location.reload();
+    function edit(p) {
+      form.id.value = p._id;
+      form.name.value = p.name;
+      form.description.value = p.description;
+      form.price.value = p.price;
+      form.image.value = p.image;
     }
+
+    form.onsubmit = e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      const method = data.id ? 'PUT' : 'POST';
+      const url = data.id ? `/update/${data.id}` : '/add';
+
+      fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(() => {
+        form.reset();
+        loadProducts();
+      });
+    };
+
+    function deleteProduct(id) {
+      fetch('/delete/' + id, { method: 'DELETE' })
+        .then(() => loadProducts());
+    }
+
+    loadProducts();
   </script>
 </body>
 </html>
+
