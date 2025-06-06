@@ -1,31 +1,47 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta charset="UTF-8">
-  <title>متجرنا</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>منتجاتنا</title>
   <style>
-    body { font-family: sans-serif; text-align: center; background: #f9f9f9; }
-    h1 { color: #333; }
-    .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; }
-    .card { background: white; border-radius: 10px; width: 250px; box-shadow: 0 2px 8px #ccc; padding: 15px; }
-    .card img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; }
-    .card h2 { font-size: 18px; margin: 10px 0; }
-    .card p { font-size: 14px; color: #555; }
-    .card .price { font-weight: bold; color: green; }
+    body { font-family: sans-serif; background: #f4f4f4; text-align: center; }
+    h1 { background: #4caf50; color: white; padding: 1rem; margin: 0; }
+    #products { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; padding: 2rem; }
+    .card {
+      background: white; border-radius: 10px; width: 300px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden;
+    }
+    .card img { width: 100%; height: 200px; object-fit: cover; }
+    .info { padding: 1rem; text-align: right; }
+    .info h3 { margin: 0; }
+    .info p { color: #555; }
+    .price { color: #e91e63; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>منتجاتنا</h1>
-  <div class="grid">
-    {% for product in products %}
-      <div class="card">
-        <img src="{{ product.image }}" alt="{{ product.name }}">
-        <h2>{{ product.name }}</h2>
-        <p>{{ product.description }}</p>
-        <p class="price">{{ product.price }} $</p>
-      </div>
-    {% endfor %}
-  </div>
+  <div id="products"></div>
+
+  <script>
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById('products');
+        data.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <img src="${p.image}" alt="صورة">
+            <div class="info">
+              <h3>${p.name}</h3>
+              <p>${p.description}</p>
+              <p class="price">${p.price} $</p>
+            </div>`;
+          container.appendChild(card);
+        });
+      });
+  </script>
 </body>
 </html>
+
