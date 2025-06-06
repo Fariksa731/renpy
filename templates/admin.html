@@ -1,92 +1,177 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>لوحة التحكم</title>
-  <style>
-    body { font-family: sans-serif; padding: 2rem; background: #fff; direction: rtl; }
-    h1 { color: #4caf50; text-align: center; }
-    form { display: flex; flex-direction: column; gap: 0.5rem; max-width: 500px; margin: auto; }
-    input, textarea, button { padding: 0.7rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
-    button { background: #4caf50; color: white; border: none; cursor: pointer; }
-    table { width: 100%; margin-top: 2rem; border-collapse: collapse; }
-    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
-    img { width: 60px; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>إدارة المنتجات</title>
+<style>
+  body { font-family: Tahoma, sans-serif; background: #eef2f7; margin: 20px; }
+  h1 { text-align: center; margin-bottom: 15px; }
+  form { background: #fff; padding: 15px; border-radius: 8px; max-width: 600px; margin: auto 0 30px; box-shadow: 0 2px 8px rgb(0 0 0 / 0.1); }
+  form input, form textarea { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
+  form button { padding: 10px 15px; background: #28a745; border: none; border-radius: 5px; color: #fff; cursor: pointer; font-weight: bold; }
+  form button:disabled { background: #999; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 8px rgb(0 0 0 / 0.1); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: center; padding: 10px; border-bottom: 1px solid #ddd; }
+  th { background: #007bff; color: #fff; }
+  button.edit, button.delete { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; }
+  button.edit { background: #ffc107; color: #000; margin-right: 5px; }
+  button.delete { background: #dc3545; color: #fff; }
+  #message { text-align: center; margin-bottom: 10px; font-weight: bold; color: green; }
+</style>
 </head>
 <body>
-  <h1>لوحة التحكم</h1>
+<h1>لوحة إدارة المنتجات</h1>
 
-  <form id="productForm">
-    <input type="hidden" name="id" />
-    <input name="name" placeholder="اسم المنتج" required />
-    <textarea name="description" placeholder="الوصف" required></textarea>
-    <input name="price" placeholder="السعر" required />
-    <input name="image" placeholder="رابط الصورة" required />
-    <button type="submit">حفظ المنتج</button>
-  </form>
+<div id="message"></div>
 
-  <table id="productsTable">
+<form id="product-form">
+  <input type="hidden" id="product-id" value="" />
+  <input type="text" id="name" placeholder="اسم المنتج" required />
+  <textarea id="description" placeholder="وصف المنتج" rows="2" required></textarea>
+  <input type="number" id="price" placeholder="السعر" min="0" step="0.01" required />
+  <input type="url" id="image" placeholder="رابط صورة المنتج" required />
+  <button type="submit">إضافة / تحديث المنتج</button>
+</form>
+
+<div style="overflow-x:auto; max-width: 900px; margin: auto;">
+  <table>
     <thead>
-      <tr><th>صورة</th><th>الاسم</th><th>الوصف</th><th>السعر</th><th>العمليات</th></tr>
+      <tr><th>الصورة</th><th>الاسم</th><th>الوصف</th><th>السعر</th><th>إجراءات</th></tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="products-table-body">
+      <!-- سيتم تعبئته ديناميكيًا -->
+    </tbody>
   </table>
+</div>
 
-  <script>
-    const form = document.getElementById('productForm');
-    const tbody = document.querySelector('#productsTable tbody');
+<script>
+const form = document.getElementById('product-form');
+const message = document.getElementById('message');
+const tbody = document.getElementById('products-table-body');
+const inputs = {
+  id: document.getElementById('product-id'),
+  name: document.getElementById('name'),
+  description: document.getElementById('description'),
+  price: document.getElementById('price'),
+  image: document.getElementById('image')
+};
 
-    function loadProducts() {
-      fetch('/api/products').then(res => res.json()).then(data => {
-        tbody.innerHTML = '';
-        data.forEach(p => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td><img src="${p.image}" /></td>
-            <td>${p.name}</td>
-            <td>${p.description}</td>
-            <td>${p.price}</td>
-            <td>
-              <button onclick='edit(${JSON.stringify(p)})'>✏️</button>
-              <button onclick='deleteProduct("${p._id}")'>🗑️</button>
-            </td>`;
-          tbody.appendChild(row);
-        });
+async function fetchProducts() {
+  const res = await fetch('/api/products');
+  return await res.json();
+}
+
+function clearForm() {
+  inputs.id.value = '';
+  inputs.name.value = '';
+  inputs.description.value = '';
+  inputs.price.value = '';
+  inputs.image.value = '';
+  form.querySelector('button').textContent = 'إضافة المنتج';
+}
+
+function showMessage(msg, isError = false) {
+  message.textContent = msg;
+  message.style.color = isError ? 'red' : 'green';
+  setTimeout(() => message.textContent = '', 3000);
+}
+
+function renderProducts(products) {
+  tbody.innerHTML = '';
+  if (products.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#666;">لا توجد منتجات</td></tr>`;
+    return;
+  }
+  products.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><img src="${p.image}" alt="${p.name}" style="width:70px; height:50px; object-fit: cover; border-radius: 5px;" /></td>
+      <td>${p.name}</td>
+      <td>${p.description}</td>
+      <td>${p.price} ر.س</td>
+      <td>
+        <button class="edit" data-id="${p._id}">تعديل</button>
+        <button class="delete" data-id="${p._id}">حذف</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadAndRender() {
+  const products = await fetchProducts();
+  renderProducts(products);
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const id = inputs.id.value.trim();
+  const payload = {
+    name: inputs.name.value.trim(),
+    description: inputs.description.value.trim(),
+    price: parseFloat(inputs.price.value),
+    image: inputs.image.value.trim()
+  };
+  try {
+    if (id) {
+      // تحديث
+      const res = await fetch(`/update/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
       });
-    }
-
-    function edit(p) {
-      form.id.value = p._id;
-      form.name.value = p.name;
-      form.description.value = p.description;
-      form.price.value = p.price;
-      form.image.value = p.image;
-    }
-
-    form.onsubmit = e => {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(form));
-      const method = data.id ? 'PUT' : 'POST';
-      const url = data.id ? `/update/${data.id}` : '/add';
-
-      fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      }).then(() => {
-        form.reset();
-        loadProducts();
+      if (!res.ok) throw new Error('خطأ في التحديث');
+      showMessage('تم تحديث المنتج بنجاح');
+    } else {
+      // إضافة
+      const res = await fetch('/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
       });
-    };
-
-    function deleteProduct(id) {
-      fetch('/delete/' + id, { method: 'DELETE' })
-        .then(() => loadProducts());
+      if (!res.ok) throw new Error('خطأ في الإضافة');
+      showMessage('تم إضافة المنتج بنجاح');
     }
+    clearForm();
+    loadAndRender();
+  } catch(err) {
+    showMessage(err.message, true);
+  }
+});
 
-    loadProducts();
-  </script>
+// التعامل مع أزرار تعديل وحذف ديناميكيًا
+tbody.addEventListener('click', async e => {
+  if (e.target.classList.contains('edit')) {
+    const id = e.target.dataset.id;
+    const products = await fetchProducts();
+    const p = products.find(x => x._id === id);
+    if (p) {
+      inputs.id.value = p._id;
+      inputs.name.value = p.name;
+      inputs.description.value = p.description;
+      inputs.price.value = p.price;
+      inputs.image.value = p.image;
+      form.querySelector('button').textContent = 'تحديث المنتج';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  } else if (e.target.classList.contains('delete')) {
+    if (confirm('هل أنت متأكد من حذف المنتج؟')) {
+      const id = e.target.dataset.id;
+      try {
+        const res = await fetch(`/delete/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('خطأ في الحذف');
+        showMessage('تم حذف المنتج بنجاح');
+        loadAndRender();
+      } catch(err) {
+        showMessage(err.message, true);
+      }
+    }
+  }
+});
+
+loadAndRender();
+</script>
 </body>
 </html>
 
