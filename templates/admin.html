@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة الإدارة</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+    h1, h2 { color: #333; }
+    form input, form textarea {
+      width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;
+    }
+    button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .product { background: #fff; padding: 10px; margin: 10px 0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>إضافة منتج</h1>
+  <form id="product-form">
+    <input name="name" placeholder="اسم المنتج" required>
+    <input name="image" placeholder="رابط الصورة" required>
+    <input name="price" placeholder="السعر" required>
+    <textarea name="description" placeholder="الوصف" required></textarea>
+    <button type="submit">حفظ</button>
+  </form>
+
+  <h2>المنتجات الحالية</h2>
+  <div id="product-list">
+    {% for product in products %}
+      <div class="product">
+        <div>
+          {{ product.name }} - {{ product.price }}$
+        </div>
+        <div>
+          <button onclick="deleteProduct('{{ product._id }}')">🗑️</button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    const form = document.getElementById('product-form');
+    form.onsubmit = async function(e) {
+      e.preventDefault();
+      const data = {
+        name: form.name.value,
+        image: form.image.value,
+        price: form.price.value,
+        description: form.description.value
+      };
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      location.reload();
+    }
+
+    async function deleteProduct(id) {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      location.reload();
+    }
+  </script>
+</body>
+</html>
